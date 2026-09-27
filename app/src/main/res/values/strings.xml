@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CalGrid</string>
+    <string name="widget_name">CalGrid naptár</string>
+    <string name="widget_description">Naptár, ütemezés és Google Tasks feladatok egy widgetben</string>
+
+    <string name="widget_today">Ma</string>
+    <string name="widget_tomorrow">Holnap</string>
+    <string name="widget_no_events">Nincs esemény</string>
+    <string name="widget_all_day">Egész nap</string>
+    <string name="widget_tasks">Feladatok</string>
+    <string name="widget_permission_needed">Koppints ide a naptár-hozzáférés megadásához</string>
+    <string name="widget_overdue">Lejárt</string>
+
+    <string name="action_refresh">Frissítés</string>
+    <string name="action_add">Új</string>
+    <string name="action_settings">Beállítások</string>
+    <string name="action_prev">Előző</string>
+    <string name="action_next">Következő</string>
+</resources>
