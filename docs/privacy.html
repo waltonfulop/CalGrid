@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CalGrid adatvédelem</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <p><a href="index.html">← CalGrid</a></p>
+  <h1>Adatvédelmi tájékoztató</h1>
+  <p class="meta">Hatályos: 2026. szeptember 29.</p>
+
+  <h2>Milyen adatokhoz fér hozzá az app?</h2>
+  <ul>
+    <li><strong>Naptáresemények</strong> (Android naptár-olvasási engedéllyel): a widget megjelenítéséhez olvassa a telefonon szinkronizált naptárakat. Módosítani nem tudja őket.</li>
+    <li><strong>Google Tasks</strong> (a te hozzájárulásoddal, a <code>https://www.googleapis.com/auth/tasks</code> hozzáféréssel): feladatlisták és feladatok olvasása, létrehozása, módosítása, kipipálása és törlése, amikor te ezt kezdeményezed az appban vagy a widgetben.</li>
+    <li><strong>A Google-fiókod e-mail-címe</strong>: csak azért, hogy az app kiírja, melyik fiók van csatlakoztatva.</li>
+  </ul>
+
+  <h2>Hol tárolódnak az adatok?</h2>
+  <p>Kizárólag a telefonodon. A feladatokról az app helyi gyorsítótárat tart, hogy a widget offline is működjön; a beállításaid szintén a készüléken vannak. Az appnak nincs saját szervere, nem használ analitikát, hirdetést vagy más harmadik féltől származó követést.</p>
+
+  <h2>Kivel osztja meg?</h2>
+  <p>Senkivel. A feladatadatok csak a telefon és a Google Tasks API között közlekednek, titkosított (HTTPS) kapcsolaton.</p>
+
+  <h2>Google API-adatok felhasználása</h2>
+  <p>A CalGrid a Google API-kból kapott adatokat a <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a> szerint használja, beleértve a Limited Use követelményeket: az adatokat csak a feladatok megjelenítésére és kezelésére használja, nem adja tovább, nem használja hirdetésre, és ember nem olvassa őket.</p>
+
+  <h2>Törlés, visszavonás</h2>
+  <ul>
+    <li>Az appban a <em>Google Tasks → Leválasztás</em> törli a helyi feladat-gyorsítótárat.</li>
+    <li>A hozzáférést bármikor visszavonhatod: <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    <li>Az app eltávolításakor minden helyi adata törlődik.</li>
+  </ul>
+
+  <h2>Kapcsolat</h2>
+  <p>Kérdés esetén: <a href="https://github.com/waltonfulop/CalGrid/issues">github.com/waltonfulop/CalGrid/issues</a>.</p>
+
+  <hr>
+
+  <section id="en" lang="en">
+    <h1>Privacy Policy</h1>
+    <p class="meta">Effective: 29 September 2026</p>
+
+    <h2>Data the app accesses</h2>
+    <ul>
+      <li><strong>Calendar events</strong> (Android read-calendar permission): read to display the widget. The app cannot modify them.</li>
+      <li><strong>Google Tasks</strong> (with your consent, scope <code>https://www.googleapis.com/auth/tasks</code>): reading, creating, updating, completing and deleting task lists and tasks when you initiate it in the app or widget.</li>
+      <li><strong>Your Google account email address</strong>: only to show which account is connected.</li>
+    </ul>
+
+    <h2>Storage</h2>
+    <p>Only on your phone. The app keeps a local cache of your tasks so the widget works offline; settings are stored on the device as well. There is no server, no analytics, no ads and no third-party tracking.</p>
+
+    <h2>Sharing</h2>
+    <p>None. Task data travels only between your phone and the Google Tasks API over HTTPS.</p>
+
+    <h2>Google API data</h2>
+    <p>CalGrid's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements. The data is used only to display and manage your tasks, is not transferred to anyone, is not used for advertising, and is not read by humans.</p>
+
+    <h2>Deletion and revocation</h2>
+    <ul>
+      <li><em>Google Tasks → Disconnect</em> in the app deletes the local task cache.</li>
+      <li>You can revoke access at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+      <li>Uninstalling the app removes all of its local data.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p><a href="https://github.com/waltonfulop/CalGrid/issues">github.com/waltonfulop/CalGrid/issues</a></p>
+  </section>
+</main>
+</body>
+</html>
