@@ -80,7 +80,7 @@ object SyncScheduler {
         setAlarm(context, REQ_MIDNIGHT, AlarmReceiver.ACTION_MIDNIGHT, at)
     }
 
-    /** Re-renders when the next visible event ends, so finished events drop off the agenda. */
+    /** Re-renders at the next event start / end or progress step (see [WidgetUpdater]). */
     fun scheduleBoundary(context: Context, atMillis: Long?) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         val pending = alarmIntent(context, REQ_BOUNDARY, AlarmReceiver.ACTION_BOUNDARY)

@@ -1,6 +1,8 @@
 package com.calgrid.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
@@ -39,7 +41,7 @@ class AgendaBuilderTest {
     fun multiDayTimedEventIsSplitIntoSpans() {
         val event = timed(1, today.atTime(22, 0), today.plusDays(2).atTime(10, 0))
         val days = build(listOf(event))
-        val spans = days.flatMap { d -> d.entries.map { d.date to (it as AgendaEntry.Event).span } }
+        val spans = days.flatMap { d -> d.entries.filterIsInstance<AgendaEntry.Event>().map { d.date to it.span } }
         assertEquals(
             listOf(today to DaySpan.STARTS, today.plusDays(1) to DaySpan.CONTINUES, today.plusDays(2) to DaySpan.ENDS),
             spans,
@@ -53,12 +55,56 @@ class AgendaBuilderTest {
     }
 
     @Test
-    fun endedEventsAreHiddenOnlyWhenAgendaStartsToday() {
+    fun todaysEndedEventsStayAndAreMarkedPast() {
         val past = timed(1, today.atTime(7, 0), today.atTime(7, 30))
-        assertTrue(build(listOf(past)).single().entries.isEmpty())
+        val tomorrow = timed(2, today.plusDays(1).atTime(7, 0), today.plusDays(1).atTime(7, 30))
+        val days = build(listOf(past, tomorrow))
+        val todayEvent = days.single { it.date == today }.entries.filterIsInstance<AgendaEntry.Event>().single()
+        assertTrue(todayEvent.past)
+        val tomorrowEvent = days.single { it.date == today.plusDays(1) }.entries.single() as AgendaEntry.Event
+        assertFalse(tomorrowEvent.past)
+    }
 
-        val fromYesterday = build(listOf(past), from = today.minusDays(1))
-        assertEquals(1, fromYesterday.first { it.date == today }.entries.size)
+    @Test
+    fun allDayEventsAreNeverPastAndHaveNoProgress() {
+        val entries = build(listOf(allDay(1, today, today)), now = today.atTime(23, 0)).single().entries
+        val event = entries.single() as AgendaEntry.Event
+        assertFalse(event.past)
+        assertNull(event.progress)
+    }
+
+    @Test
+    fun runningEventHasProgress() {
+        val running = timed(1, today.atTime(7, 0), today.atTime(9, 0))
+        val event = build(listOf(running)).single().entries.filterIsInstance<AgendaEntry.Event>().single()
+        assertEquals(0.5f, event.progress!!, 0.001f)
+        assertFalse(event.past)
+    }
+
+    @Test
+    fun nowLineFollowsStartedEventsAndAllDayComesFirst() {
+        val ended = timed(1, today.atTime(6, 0), today.atTime(7, 0))
+        val running = timed(2, today.atTime(7, 30), today.atTime(9, 0))
+        val later = timed(3, today.atTime(10, 0), today.atTime(11, 0))
+        val wholeDay = allDay(4, today, today)
+        val task = TaskItem("t", "l", "task", today, completed = false)
+        val entries = build(listOf(later, running, ended, wholeDay), listOf(task)).single().entries
+        val labels = entries.map {
+            when (it) {
+                is AgendaEntry.Event -> it.instance.title
+                is AgendaEntry.Task -> it.task.title
+                AgendaEntry.NowLine -> "now"
+            }
+        }
+        assertEquals(listOf("a4", "task", "e1", "e2", "now", "e3"), labels)
+    }
+
+    @Test
+    fun noNowLineWithoutTimedEventsOrOnOtherDays() {
+        assertTrue(build(listOf(allDay(1, today, today))).single().entries.none { it is AgendaEntry.NowLine })
+        val tomorrow = timed(2, today.plusDays(1).atTime(9, 0), today.plusDays(1).atTime(10, 0))
+        val days = build(listOf(tomorrow))
+        assertTrue(days.flatMap { it.entries }.none { it is AgendaEntry.NowLine })
     }
 
     @Test
@@ -73,9 +119,8 @@ class AgendaBuilderTest {
         val doneOld = TaskItem("t2", "l", "done", today.minusDays(2), completed = true)
         val event = timed(1, today.atTime(9, 0), today.atTime(10, 0))
         val todayEntries = build(listOf(event), listOf(overdue, doneOld)).single { it.date == today }.entries
-        assertEquals(2, todayEntries.size)
-        val first = todayEntries.first() as AgendaEntry.Task
-        assertTrue(first.overdue)
+        assertEquals(1, todayEntries.count { it is AgendaEntry.Task })
+        assertTrue((todayEntries.first() as AgendaEntry.Task).overdue)
     }
 
     @Test
@@ -83,13 +128,24 @@ class AgendaBuilderTest {
         val timedEvent = timed(1, today.atTime(9, 0), today.atTime(10, 0))
         val allDayEvent = allDay(2, today, today)
         val entries = build(listOf(timedEvent, allDayEvent)).single().entries
-        assertEquals(listOf(2L, 1L), entries.map { (it as AgendaEntry.Event).instance.eventId })
+        assertEquals(listOf(2L, 1L), entries.filterIsInstance<AgendaEntry.Event>().map { it.instance.eventId })
+    }
+
+    @Test
+    fun monthGridHasFiveRowsUnlessTheMonthNeedsSix() {
+        fun rows(y: Int, m: Int, first: DayOfWeek) =
+            MonthGridBuilder.build(YearMonth.of(y, m), first, today, null, emptyList(), zone).size
+        assertEquals(5, rows(2026, 9, DayOfWeek.MONDAY))
+        assertEquals(5, rows(2027, 2, DayOfWeek.MONDAY)) // exactly 4 weeks
+        assertEquals(6, rows(2026, 8, DayOfWeek.MONDAY)) // Aug 1 is Saturday, Aug 31 Monday
+        val aug = MonthGridBuilder.build(YearMonth.of(2026, 8), DayOfWeek.MONDAY, today, null, emptyList(), zone)
+        assertEquals(LocalDate.of(2026, 8, 31), aug.last().first().date)
     }
 
     @Test
     fun monthGridStartsOnConfiguredWeekday() {
         val grid = MonthGridBuilder.build(YearMonth.of(2026, 9), DayOfWeek.MONDAY, today, null, emptyList(), zone)
-        assertEquals(6, grid.size)
+        assertEquals(5, grid.size)
         assertTrue(grid.all { it.size == 7 })
         assertEquals(LocalDate.of(2026, 8, 31), grid[0][0].date)
 

@@ -3,9 +3,12 @@ package com.calgrid.widget
 import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -19,6 +22,7 @@ import androidx.glance.action.Action
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.CheckBox
+import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
@@ -49,6 +53,7 @@ import com.calgrid.model.DaySpan
 import com.calgrid.model.MonthCell
 import com.calgrid.model.MonthGridBuilder
 import com.calgrid.model.TaskItem
+import com.calgrid.settings.WidgetConfig
 import com.calgrid.settings.WidgetLayout
 import java.time.Instant
 import java.time.LocalDate
@@ -70,10 +75,46 @@ private fun resolveMode(layout: WidgetLayout, size: DpSize): Mode = when (layout
     }
 }
 
+/** Every size the widget draws with, scaled by the user's settings. */
+private class Dims(config: WidgetConfig) {
+    private val header = config.headerScale / 100f
+    private val month = config.monthTextScale / 100f
+    private val agenda = config.agendaTextScale / 100f
+    private val spacing = config.agendaSpacing / 100f
+
+    val headerHeight: Dp = (36 * header).dp
+    val headerTitle: TextUnit = (16 * header).sp
+    val headerButton: Dp = (32 * header).dp
+    val headerIcon: Dp = (20 * header).dp
+
+    val weekdayText: TextUnit = (10 * month).sp
+    val dayNumberBox: Dp = (22 * month).dp
+    val dayNumberText: TextUnit = (12 * month).sp
+    val dot: Dp = (4 * month).dp
+
+    val dayHeaderText: TextUnit = (12 * agenda).sp
+    val titleText: TextUnit = (13 * agenda).sp
+    val subtitleText: TextUnit = (11 * agenda).sp
+    val colorBarHeight: Dp = (30 * agenda).dp
+    val dayHeaderTop: Dp = (8 * spacing).dp
+    val rowPadding: Dp = (3 * spacing).dp
+    val taskPadding: Dp = (4 * spacing).dp
+}
+
+private val LocalDims = staticCompositionLocalOf { Dims(WidgetConfig()) }
+
 @Composable
 fun WidgetContent(state: WidgetUiState) {
+    CompositionLocalProvider(LocalDims provides Dims(state.config)) {
+        WidgetBody(state)
+    }
+}
+
+@Composable
+private fun WidgetBody(state: WidgetUiState) {
     val context = LocalContext.current
     val size = LocalSize.current
+    val dims = LocalDims.current
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -90,12 +131,13 @@ fun WidgetContent(state: WidgetUiState) {
                 Mode.MONTH -> MonthGrid(state, selectOnTap = false, GlanceModifier.fillMaxWidth().defaultWeight())
                 Mode.AGENDA -> Agenda(state, GlanceModifier.fillMaxWidth().defaultWeight())
                 Mode.SIDE_BY_SIDE -> Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
-                    MonthGrid(state, selectOnTap = true, GlanceModifier.defaultWeight().fillMaxHeight())
+                    val gridWidth: Dp = (size.width - 28.dp) * (state.config.sideMonthShare / 100f)
+                    MonthGrid(state, selectOnTap = true, GlanceModifier.width(gridWidth).fillMaxHeight())
                     Spacer(GlanceModifier.width(8.dp))
                     Agenda(state, GlanceModifier.defaultWeight().fillMaxHeight())
                 }
                 Mode.STACKED -> {
-                    val gridHeight: Dp = (size.height - 44.dp) * 0.55f
+                    val gridHeight: Dp = (size.height - 16.dp - dims.headerHeight) * (state.config.stackedMonthShare / 100f)
                     MonthGrid(state, selectOnTap = true, GlanceModifier.fillMaxWidth().height(gridHeight))
                     Spacer(GlanceModifier.height(4.dp))
                     Agenda(state, GlanceModifier.fillMaxWidth().defaultWeight())
@@ -139,14 +181,14 @@ private fun Header(state: WidgetUiState, showMonth: Boolean) {
     }
     val focusDate = state.selectedDate ?: state.today
     Row(
-        modifier = GlanceModifier.fillMaxWidth().height(36.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(LocalDims.current.headerHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight().clickable(actionStartActivity(WidgetIntents.openCalendarAt(focusDate))),
-            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = LocalDims.current.headerTitle, fontWeight = FontWeight.Bold),
         )
         if (showMonth) {
             HeaderIcon(R.drawable.ic_chevron_left, R.string.action_prev, monthNav(-1))
@@ -171,13 +213,13 @@ private fun monthNav(delta: Int): Action =
 private fun HeaderIcon(@DrawableRes icon: Int, description: Int, onClick: Action) {
     val context = LocalContext.current
     Box(
-        modifier = GlanceModifier.size(32.dp).cornerRadius(16.dp).clickable(onClick),
+        modifier = GlanceModifier.size(LocalDims.current.headerButton).cornerRadius(LocalDims.current.headerButton / 2).clickable(onClick),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             provider = ImageProvider(icon),
             contentDescription = context.getString(description),
-            modifier = GlanceModifier.size(20.dp),
+            modifier = GlanceModifier.size(LocalDims.current.headerIcon),
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
         )
     }
@@ -196,7 +238,7 @@ private fun MonthGrid(state: WidgetUiState, selectOnTap: Boolean, modifier: Glan
                     modifier = GlanceModifier.defaultWeight(),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 10.sp,
+                        fontSize = LocalDims.current.weekdayText,
                         textAlign = TextAlign.Center,
                     ),
                 )
@@ -228,8 +270,8 @@ private fun DayCell(cell: MonthCell, selectOnTap: Boolean, modifier: GlanceModif
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        var numberModifier = GlanceModifier.size(22.dp)
-        if (cell.isToday) numberModifier = numberModifier.cornerRadius(11.dp).background(GlanceTheme.colors.primary)
+        var numberModifier = GlanceModifier.size(LocalDims.current.dayNumberBox)
+        if (cell.isToday) numberModifier = numberModifier.cornerRadius(LocalDims.current.dayNumberBox / 2).background(GlanceTheme.colors.primary)
         Box(modifier = numberModifier, contentAlignment = Alignment.Center) {
             Text(
                 text = cell.date.dayOfMonth.toString(),
@@ -239,17 +281,17 @@ private fun DayCell(cell: MonthCell, selectOnTap: Boolean, modifier: GlanceModif
                         cell.inMonth -> GlanceTheme.colors.onSurface
                         else -> GlanceTheme.colors.outline
                     },
-                    fontSize = 12.sp,
+                    fontSize = LocalDims.current.dayNumberText,
                     fontWeight = if (cell.isToday) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Center,
                 ),
             )
         }
-        Row(modifier = GlanceModifier.height(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = GlanceModifier.height(LocalDims.current.dot + 1.dp), verticalAlignment = Alignment.CenterVertically) {
             cell.dotColors.forEachIndexed { index, color ->
                 if (index > 0) Spacer(GlanceModifier.width(2.dp))
                 Box(
-                    modifier = GlanceModifier.size(4.dp).cornerRadius(2.dp).background(ColorProvider(Color(color))),
+                    modifier = GlanceModifier.size(LocalDims.current.dot).cornerRadius(LocalDims.current.dot / 2).background(ColorProvider(Color(color))),
                 ) {}
             }
         }
@@ -261,6 +303,7 @@ private fun DayCell(cell: MonthCell, selectOnTap: Boolean, modifier: GlanceModif
 @Composable
 private fun Agenda(state: WidgetUiState, modifier: GlanceModifier) {
     val context = LocalContext.current
+    val dims = LocalDims.current
     LazyColumn(modifier = modifier) {
         state.agenda.forEach { day ->
             item(itemId = -(day.date.toEpochDay() * 2 + 10)) {
@@ -271,7 +314,7 @@ private fun Agenda(state: WidgetUiState, modifier: GlanceModifier) {
                     Text(
                         text = context.getString(R.string.widget_no_events),
                         modifier = GlanceModifier.padding(vertical = 2.dp),
-                        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
+                        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = dims.dayHeaderText),
                     )
                 }
             }
@@ -279,6 +322,7 @@ private fun Agenda(state: WidgetUiState, modifier: GlanceModifier) {
                 when (entry) {
                     is AgendaEntry.Event -> EventRow(entry, state.is24Hour)
                     is AgendaEntry.Task -> TaskRow(entry.task, entry.overdue)
+                    AgendaEntry.NowLine -> NowLine()
                 }
             }
         }
@@ -292,6 +336,7 @@ private fun Agenda(state: WidgetUiState, modifier: GlanceModifier) {
 @Composable
 private fun DayHeader(date: LocalDate, today: LocalDate) {
     val context = LocalContext.current
+    val dims = LocalDims.current
     val formatted = date.format(DateTimeFormatter.ofPattern("MMM d., EEEE", Locale.getDefault()))
     val text = when (date) {
         today -> "${context.getString(R.string.widget_today)} · $formatted"
@@ -301,53 +346,86 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
     Text(
         text = text,
         maxLines = 1,
-        modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp)
+        modifier = GlanceModifier.fillMaxWidth().padding(top = dims.dayHeaderTop, bottom = 2.dp)
             .clickable(actionStartActivity(WidgetIntents.openCalendarAt(date))),
-        style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+        style = TextStyle(color = GlanceTheme.colors.primary, fontSize = dims.dayHeaderText, fontWeight = FontWeight.Bold),
     )
 }
 
 @Composable
 private fun TasksHeader() {
     val context = LocalContext.current
+    val dims = LocalDims.current
     Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = GlanceModifier.fillMaxWidth().padding(top = dims.dayHeaderTop),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = context.getString(R.string.widget_tasks),
             modifier = GlanceModifier.defaultWeight(),
-            style = TextStyle(color = GlanceTheme.colors.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = GlanceTheme.colors.primary, fontSize = dims.dayHeaderText, fontWeight = FontWeight.Bold),
         )
         HeaderIcon(R.drawable.ic_add, R.string.action_add, actionStartActivity(WidgetIntents.newTask(context)))
+    }
+}
+
+/** Red dot and line marking the current time among today's events. */
+@Composable
+private fun NowLine() {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = GlanceModifier.size(8.dp).cornerRadius(4.dp).background(GlanceTheme.colors.error)) {}
+        Box(modifier = GlanceModifier.defaultWeight().height(2.dp).background(GlanceTheme.colors.error)) {}
     }
 }
 
 @Composable
 private fun EventRow(entry: AgendaEntry.Event, is24Hour: Boolean) {
     val context = LocalContext.current
+    val dims = LocalDims.current
     val event = entry.instance
+    val eventColor = Color(event.color)
+    val decoration = if (entry.past) TextDecoration.LineThrough else TextDecoration.None
     Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp)
+        modifier = GlanceModifier.fillMaxWidth().padding(vertical = dims.rowPadding)
             .clickable(actionStartActivity(WidgetIntents.openEvent(event))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = GlanceModifier.width(4.dp).height(30.dp).cornerRadius(2.dp)
-                .background(ColorProvider(Color(event.color))),
+            modifier = GlanceModifier.width(4.dp).height(dims.colorBarHeight).cornerRadius(2.dp)
+                .background(ColorProvider(if (entry.past) eventColor.copy(alpha = 0.4f) else eventColor)),
         ) {}
         Spacer(GlanceModifier.width(8.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
                 text = event.title.ifBlank { "–" },
                 maxLines = 1,
-                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                style = TextStyle(
+                    color = if (entry.past) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
+                    fontSize = dims.titleText,
+                    fontWeight = FontWeight.Medium,
+                    textDecoration = decoration,
+                ),
             )
             Text(
                 text = eventSubtitle(context, entry, is24Hour),
                 maxLines = 1,
-                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = dims.subtitleText,
+                    textDecoration = decoration,
+                ),
             )
+            entry.progress?.let { progress ->
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(3.dp).padding(top = 1.dp),
+                    color = ColorProvider(eventColor),
+                    backgroundColor = ColorProvider(eventColor.copy(alpha = 0.25f)),
+                )
+            }
         }
     }
 }
@@ -370,6 +448,7 @@ private fun eventSubtitle(context: Context, entry: AgendaEntry.Event, is24Hour: 
 @Composable
 private fun TaskRow(task: TaskItem, overdue: Boolean) {
     val context = LocalContext.current
+    val dims = LocalDims.current
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -383,18 +462,18 @@ private fun TaskRow(task: TaskItem, overdue: Boolean) {
         Text(
             text = task.title.ifBlank { "–" },
             maxLines = 1,
-            modifier = GlanceModifier.defaultWeight().padding(vertical = 4.dp)
+            modifier = GlanceModifier.defaultWeight().padding(vertical = dims.taskPadding)
                 .clickable(actionStartActivity(WidgetIntents.openTask(context, task.id))),
             style = TextStyle(
                 color = if (task.completed) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
-                fontSize = 13.sp,
+                fontSize = dims.titleText,
                 textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
             ),
         )
         if (overdue) {
             Text(
                 text = context.getString(R.string.widget_overdue),
-                style = TextStyle(color = GlanceTheme.colors.error, fontSize = 11.sp),
+                style = TextStyle(color = GlanceTheme.colors.error, fontSize = dims.subtitleText),
             )
         }
     }

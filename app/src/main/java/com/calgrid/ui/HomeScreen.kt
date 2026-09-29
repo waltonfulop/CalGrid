@@ -4,6 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,6 +50,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 import java.text.DateFormat
 import java.util.Date
 
@@ -80,14 +84,17 @@ fun HomeScreen(onOpenTasks: () -> Unit) {
     }
 
     val authLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { res ->
-        if (res.resultCode == Activity.RESULT_OK) {
-            scope.launch {
-                runCatching { container.auth.resultFromIntent(res.data) }
-                    .onSuccess { onAuthorized(it) }
-                    .onFailure { authError = describeAuthError(it) }
+        scope.launch {
+            // Even a cancelled flow may carry the real failure status in its data.
+            val parsed = if (res.data != null) runCatching { container.auth.resultFromIntent(res.data) } else null
+            when {
+                res.resultCode == Activity.RESULT_OK && parsed?.getOrNull() != null -> onAuthorized(parsed.getOrThrow())
+                parsed?.exceptionOrNull() != null -> authError = describeAuthError(parsed.exceptionOrNull()!!)
+                else -> authError = "A hozzáférés nem lett megadva (a Google-ablak kód nélkül zárult be). " +
+                    "Ha nem te léptél ki: a Google-fiókodnak szerepelnie kell a Cloud projekt „Test users” listáján, " +
+                    "és az Android OAuth kliens SHA-1-ének egyeznie kell ezzel: ${signingSha1(context) ?: "?"}."
             }
-        } else {
-            authError = "A hozzáférés nem lett megadva."
+            Log.w("CalGrid", "Tasks authorization: resultCode=${res.resultCode}, error=$authError", parsed?.exceptionOrNull())
         }
     }
 
@@ -164,6 +171,10 @@ private fun TasksAccountSection(
     if (!account.enabled) {
         Text("Csatlakoztasd a Google-fiókodat, hogy a feladataid megjelenjenek a widgetben.")
         Button(onClick = onConnect) { Text("Csatlakozás") }
+        val sha1 = signingSha1(LocalContext.current)
+        if (sha1 != null) {
+            Text("Az app SHA-1 lenyomata (a Cloud Console-ba): $sha1", style = MaterialTheme.typography.bodySmall)
+        }
     } else {
         Text(account.email?.let { "Csatlakoztatva: $it" } ?: "Csatlakoztatva")
         val lastSync = if (account.lastSyncMillis > 0) {
@@ -201,6 +212,16 @@ private fun describeAuthError(e: Throwable): String {
         CommonStatusCodes.DEVELOPER_ERROR ->
             "Az OAuth kliens nincs beállítva ehhez az apphoz (package név + SHA-1). Lásd a README-t."
         CommonStatusCodes.NETWORK_ERROR -> "Nincs hálózati kapcsolat."
-        else -> "Nem sikerült csatlakozni: ${e.message ?: e.javaClass.simpleName}"
+        CommonStatusCodes.CANCELED -> "A hozzáférés nem lett megadva (megszakítva)."
+        null -> "Nem sikerült csatlakozni: ${e.message ?: e.javaClass.simpleName}"
+        else -> "Nem sikerült csatlakozni (kód: ${api.statusCode}, " +
+            "${CommonStatusCodes.getStatusCodeString(api.statusCode)}): ${api.message.orEmpty()}"
     }
 }
+
+/** SHA-1 of the certificate this build is signed with, in the format the Google Cloud console expects. */
+private fun signingSha1(context: Context): String? = runCatching {
+    val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+    val cert = info.signingInfo?.apkContentsSigners?.firstOrNull() ?: return null
+    MessageDigest.getInstance("SHA-1").digest(cert.toByteArray()).joinToString(":") { "%02X".format(it) }
+}.getOrNull()

@@ -34,6 +34,10 @@ sealed interface AgendaEntry {
         /** Which part of a multi-day event falls on this day. */
         val span: DaySpan,
         override val stableId: Long,
+        /** Already over; only set for today's timed entries. */
+        val past: Boolean = false,
+        /** Elapsed fraction (0..1) while the event is running today; never set for all-day entries. */
+        val progress: Float? = null,
     ) : AgendaEntry
 
     data class Task(
@@ -41,6 +45,11 @@ sealed interface AgendaEntry {
         val overdue: Boolean,
         override val stableId: Long,
     ) : AgendaEntry
+
+    /** Marks the current time among today's timed events. */
+    data object NowLine : AgendaEntry {
+        override val stableId: Long = -2L
+    }
 }
 
 enum class DaySpan { ALL_DAY, SINGLE, STARTS, CONTINUES, ENDS }

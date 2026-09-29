@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -180,6 +181,29 @@ private fun ConfigScreen(appWidgetId: Int, onSave: (WidgetConfig) -> Unit) {
                 )
 
                 HorizontalDivider()
+                Section("Méretek")
+                PercentSlider("Fejléc", current.headerScale, 70..150) { update { copy(headerScale = it) } }
+                PercentSlider("Havi nézet számai", current.monthTextScale, 70..150) { update { copy(monthTextScale = it) } }
+                PercentSlider("Ütemezés betűmérete", current.agendaTextScale, 70..150) { update { copy(agendaTextScale = it) } }
+                PercentSlider("Ütemezés sorköze", current.agendaSpacing, 0..200) { update { copy(agendaSpacing = it) } }
+                PercentSlider("Havi nézet magassága (egymás alatt)", current.stackedMonthShare, 30..70) {
+                    update { copy(stackedMonthShare = it) }
+                }
+                PercentSlider("Havi nézet szélessége (egymás mellett)", current.sideMonthShare, 30..70) {
+                    update { copy(sideMonthShare = it) }
+                }
+                TextButton(onClick = {
+                    val d = WidgetConfig()
+                    update {
+                        copy(
+                            headerScale = d.headerScale, monthTextScale = d.monthTextScale,
+                            agendaTextScale = d.agendaTextScale, agendaSpacing = d.agendaSpacing,
+                            stackedMonthShare = d.stackedMonthShare, sideMonthShare = d.sideMonthShare,
+                        )
+                    }
+                }) { Text("Alapméretek visszaállítása") }
+
+                HorizontalDivider()
                 Section("Naptárak")
                 if (!hasPermission) {
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.READ_CALENDAR) }) {
@@ -254,6 +278,20 @@ private fun <T> ChipRow(options: List<Pair<T, String>>, selected: T, onSelect: (
         options.forEach { (value, label) ->
             FilterChip(selected = value == selected, onClick = { onSelect(value) }, label = { Text(label) })
         }
+    }
+}
+
+/** Slider in 10 % steps. */
+@Composable
+private fun PercentSlider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+    Column {
+        Text("$label: $value%", style = MaterialTheme.typography.bodyMedium)
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { v -> onChange((Math.round(v / 10) * 10).coerceIn(range.first, range.last)) },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = (range.last - range.first) / 10 - 1,
+        )
     }
 }
 

@@ -31,6 +31,14 @@ data class WidgetConfig(
     val showCompletedTasks: Boolean = false,
     /** Background opacity in percent, 0..100. */
     val backgroundOpacity: Int = 100,
+    /** Sizes in percent of the default look. */
+    val headerScale: Int = 100,
+    val monthTextScale: Int = 100,
+    val agendaTextScale: Int = 100,
+    val agendaSpacing: Int = 100,
+    /** Share of the month grid in the "both" layout, in percent. */
+    val stackedMonthShare: Int = 55,
+    val sideMonthShare: Int = 50,
 ) {
     val firstDayOfWeek: DayOfWeek get() = DayOfWeek.of(firstDayIso)
 }
