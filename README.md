@@ -10,13 +10,15 @@ Android home screen naptár widget (Android 12+) Google Tasks integrációval.
 
 ## Telepítés
 
-A kész APK: [`release/CalGrid-debug.apk`](release/CalGrid-debug.apk). Másold a telefonra és telepítsd (engedélyezni kell az ismeretlen forrásból való telepítést), vagy:
+A kész APK: [`release/CalGrid.apk`](release/CalGrid.apk) (release build, a saját release kulccsal aláírva). Másold a telefonra és telepítsd (engedélyezni kell az ismeretlen forrásból való telepítést), vagy:
 
 ```
-adb install -r release/CalGrid-debug.apk
+adb install -r release/CalGrid.apk
 ```
 
 Ezután nyisd meg az appot, add meg a naptár-hozzáférést, és tedd ki a widgetet (hosszan nyomd a kezdőképernyőt, majd Widgetek → CalGrid).
+
+Ha korábban a debug APK volt fent, azt előbb el kell távolítani (más kulccsal van aláírva), és a widgetet újra ki kell tenni.
 
 ## Hogyan frissül magától
 
@@ -33,20 +35,28 @@ A Google Tasks API-nak nincs push értesítése, ezért egy máshol (pl. weben) 
 
 ## Google Tasks beállítás (egyszeri)
 
-A Tasks API-hoz OAuth kliens kell a Google Cloudban. Enélkül a „Csatlakozás” gomb *„Az OAuth kliens nincs beállítva”* hibát ad; a naptár ettől függetlenül működik.
+A Tasks API-hoz OAuth kliens kell a Google Cloudban. Enélkül a „Csatlakozás” gomb hibát ad; a naptár ettől függetlenül működik.
 
 1. Hozz létre egy Google Cloud projektet: <https://console.cloud.google.com/>.
 2. **APIs & Services → Library**: engedélyezd a **Google Tasks API**-t.
-3. **OAuth consent screen**:
-   - User type: External, publishing status: Testing.
-   - A *Test users* közé add hozzá a saját Google-fiókodat.
+3. **Google Auth Platform (OAuth consent screen)**: User type External, majd **Audience → Publish app → In production**.
+   - Ellenőrzést (verification) nem kell kérni: saját / családi használatra (max. 100 fiók) enélkül is működik.
+   - *Testing* állapotban a Google 7 nap után visszavonja a hozzáférést, és újra kell csatlakozni, ezért kell az *In production*.
 4. **Credentials → Create credentials → OAuth client ID** a következő adatokkal:
    - Application type: **Android**
    - Package name: `com.calgrid`
-   - SHA-1: a debug kulcs lenyomata, amivel a mellékelt APK alá van írva: `3E:DF:5E:E5:88:20:42:1A:71:F0:08:C8:57:38:A2:80:B2:F3:CD:EB`. Más gépen buildelve a `./gradlew signingReport` kiírja az aktuálisat.
-5. Az appban: **Google Tasks → Csatlakozás**. A Google Tasks kártya kiírja az app tényleges SHA-1-ét is; ha a Csatlakozás hibát ad, ezt vesd össze a Cloud Console-ban megadottal.
+   - SHA-1: a release kulcs lenyomata, amivel a mellékelt APK alá van írva: `70:86:3C:A0:19:AC:D2:82:4C:18:A5:00:50:C3:2C:57:63:80:C8:2E`.
+   - Debug buildhez külön Android kliens kell a gép debug kulcsának SHA-1-ével (`./gradlew signingReport`).
+5. Az appban: **Google Tasks → Csatlakozás**. Első alkalommal fiókonként megjelenik a *„Google hasn't verified this app”* képernyő: **Advanced → Go to CalGrid (unsafe)**.
+   - A Google Tasks kártya kiírja az app tényleges SHA-1-ét; ha a Csatlakozás hibát ad, ezt vesd össze a Cloud Console-ban megadottal.
 
 Kliens ID-t nem kell beírni a kódba: az Android OAuth kliens a package név és a SHA-1 alapján azonosítja az appot.
+
+## Release kulcs
+
+A release build aláírása a repón kívül van: `~/.android/calgrid-keystore.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`), ami a `~/.android/calgrid-release.jks` kulcsra mutat. Más helyet a `-Pcalgrid.keystoreProperties=<útvonal>` Gradle property-vel lehet megadni. A fájl nélkül a release build aláíratlan lesz.
+
+**Mindkét fájlt mentsd el biztonságos helyre.** Ha elvesznek, a telepített appot csak eltávolítás után lehet frissíteni, és az OAuth kliensben is új SHA-1-et kell megadni.
 
 ## Build
 
@@ -54,6 +64,7 @@ Android Studio vagy parancssor, JDK 17+:
 
 ```
 ./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease        # app/build/outputs/apk/release/app-release.apk (aláírva, ha van release kulcs)
 ./gradlew testDebugUnitTest      # unit tesztek (agenda, havi rács, pending op logika)
 ```
 

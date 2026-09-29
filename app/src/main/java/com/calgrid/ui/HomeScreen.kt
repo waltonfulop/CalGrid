@@ -208,6 +208,10 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 
 private fun describeAuthError(e: Throwable): String {
     val api = e as? ApiException ?: e.cause as? ApiException
+    if (api?.message?.contains("UNREGISTERED_ON_API_CONSOLE") == true) {
+        return "Nincs Android OAuth kliens a Google Cloudban a com.calgrid package névvel és az alább látható SHA-1-gyel. " +
+            "Hozd létre (Credentials → Create credentials → OAuth client ID → Android), majd várj pár percet."
+    }
     return when (api?.statusCode) {
         CommonStatusCodes.DEVELOPER_ERROR ->
             "Az OAuth kliens nincs beállítva ehhez az apphoz (package név + SHA-1). Lásd a README-t."
