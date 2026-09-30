@@ -7,7 +7,6 @@ import com.calgrid.model.AgendaBuilder
 import com.calgrid.model.AgendaDay
 import com.calgrid.model.MonthCell
 import com.calgrid.model.MonthGridBuilder
-import com.calgrid.model.TaskItem
 import com.calgrid.settings.WidgetConfig
 import com.calgrid.settings.WidgetLayout
 import java.time.LocalDate
@@ -25,7 +24,6 @@ data class WidgetUiState(
     val selectedDate: LocalDate?,
     val monthWeeks: List<List<MonthCell>>,
     val agenda: List<AgendaDay>,
-    val undatedTasks: List<TaskItem>,
     val tasksEnabled: Boolean,
     val is24Hour: Boolean,
 )
@@ -80,8 +78,9 @@ object WidgetDataLoader {
             } else {
                 emptyList()
             },
-            agenda = AgendaBuilder.build(events, tasks, agendaFrom, config.agendaDays, today, now, zone),
-            undatedTasks = if (config.showUndatedTasks) AgendaBuilder.undated(tasks) else emptyList(),
+            agenda = AgendaBuilder.build(
+                events, tasks, agendaFrom, config.agendaDays, today, now, zone, includeUndated = config.showUndatedTasks,
+            ),
             tasksEnabled = tasksEnabled,
             is24Hour = DateFormat.is24HourFormat(context),
         )

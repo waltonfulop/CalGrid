@@ -78,6 +78,12 @@ fun HomeScreen(onOpenTasks: () -> Unit) {
     }
 
     suspend fun onAuthorized(result: AuthorizationResult) {
+        // With granular consent the user can untick the Tasks checkbox and still "succeed".
+        if (GoogleAuthManager.TASKS_SCOPE !in result.grantedScopes) {
+            authError = "A Google-ablakban nem lett bepipálva a feladatokhoz való hozzáférés. " +
+                "Nyomd meg újra a Csatlakozás gombot, és pipáld be."
+            return
+        }
         container.appPrefs.setSignedIn(GoogleAuthManager.emailOf(result))
         authError = null
         SyncScheduler.requestTasksSync(context)

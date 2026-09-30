@@ -16,8 +16,8 @@ android {
         applicationId = "com.calgrid"
         minSdk = 31
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     // Release key lives outside the repo; without it the release build is simply unsigned.

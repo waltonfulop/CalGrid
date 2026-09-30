@@ -197,7 +197,12 @@ private fun Header(state: WidgetUiState, showMonth: Boolean) {
         if (state.monthOffset != 0 || state.selectedDate != null) {
             HeaderIcon(R.drawable.ic_today, R.string.widget_today, monthNav(0))
         }
-        HeaderIcon(R.drawable.ic_add, R.string.action_add, actionStartActivity(WidgetIntents.newEvent(focusDate, state.today)))
+        val add = if (state.tasksEnabled) {
+            WidgetIntents.addChooser(context, focusDate, state.today)
+        } else {
+            WidgetIntents.newEvent(focusDate, state.today)
+        }
+        HeaderIcon(R.drawable.ic_add, R.string.action_add, actionStartActivity(add))
         HeaderIcon(R.drawable.ic_refresh, R.string.action_refresh, actionRunCallback<RefreshAction>())
         HeaderIcon(
             R.drawable.ic_settings, R.string.action_settings,
@@ -261,17 +266,18 @@ private fun DayCell(cell: MonthCell, selectOnTap: Boolean, modifier: GlanceModif
     } else {
         actionStartActivity(WidgetIntents.openCalendarAt(cell.date))
     }
-    var cellModifier = modifier.clickable(onClick)
-    if (cell.isSelected) {
-        cellModifier = cellModifier.cornerRadius(8.dp).background(GlanceTheme.colors.secondaryContainer)
-    }
+    // Backgrounds are always set, transparent when unused: launchers re-apply a new render onto the
+    // existing views, so a background left out would keep yesterday's "today" highlight.
+    val cellModifier = modifier.clickable(onClick).cornerRadius(8.dp)
+        .background(if (cell.isSelected) GlanceTheme.colors.secondaryContainer else ColorProvider(Color.Transparent))
     Column(
         modifier = cellModifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        var numberModifier = GlanceModifier.size(LocalDims.current.dayNumberBox)
-        if (cell.isToday) numberModifier = numberModifier.cornerRadius(LocalDims.current.dayNumberBox / 2).background(GlanceTheme.colors.primary)
+        val numberModifier = GlanceModifier.size(LocalDims.current.dayNumberBox)
+            .cornerRadius(LocalDims.current.dayNumberBox / 2)
+            .background(if (cell.isToday) GlanceTheme.colors.primary else ColorProvider(Color.Transparent))
         Box(modifier = numberModifier, contentAlignment = Alignment.Center) {
             Text(
                 text = cell.date.dayOfMonth.toString(),
@@ -326,10 +332,6 @@ private fun Agenda(state: WidgetUiState, modifier: GlanceModifier) {
                 }
             }
         }
-        if (state.tasksEnabled && state.undatedTasks.isNotEmpty()) {
-            item(itemId = -1L) { TasksHeader() }
-            items(state.undatedTasks, itemId = { it.stableId }) { task -> TaskRow(task, overdue = false) }
-        }
     }
 }
 
@@ -350,23 +352,6 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
             .clickable(actionStartActivity(WidgetIntents.openCalendarAt(date))),
         style = TextStyle(color = GlanceTheme.colors.primary, fontSize = dims.dayHeaderText, fontWeight = FontWeight.Bold),
     )
-}
-
-@Composable
-private fun TasksHeader() {
-    val context = LocalContext.current
-    val dims = LocalDims.current
-    Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(top = dims.dayHeaderTop),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = context.getString(R.string.widget_tasks),
-            modifier = GlanceModifier.defaultWeight(),
-            style = TextStyle(color = GlanceTheme.colors.primary, fontSize = dims.dayHeaderText, fontWeight = FontWeight.Bold),
-        )
-        HeaderIcon(R.drawable.ic_add, R.string.action_add, actionStartActivity(WidgetIntents.newTask(context)))
-    }
 }
 
 /** Red dot and line marking the current time among today's events. */
@@ -470,10 +455,16 @@ private fun TaskRow(task: TaskItem, overdue: Boolean) {
                 textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
             ),
         )
-        if (overdue) {
+        task.due?.let { due ->
+            val date = due.format(DateTimeFormatter.ofPattern("MMM d.", Locale.getDefault()))
             Text(
-                text = context.getString(R.string.widget_overdue),
-                style = TextStyle(color = GlanceTheme.colors.error, fontSize = dims.subtitleText),
+                text = if (overdue) "${context.getString(R.string.widget_overdue)} · $date" else date,
+                maxLines = 1,
+                modifier = GlanceModifier.padding(start = 6.dp),
+                style = TextStyle(
+                    color = if (overdue) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = dims.subtitleText,
+                ),
             )
         }
     }

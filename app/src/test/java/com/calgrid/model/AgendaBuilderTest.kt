@@ -100,6 +100,17 @@ class AgendaBuilderTest {
     }
 
     @Test
+    fun undatedTasksCarryOverToTodayAtTheTop() {
+        val undated = TaskItem("u", "l", "undated", null, completed = false)
+        val wholeDay = allDay(1, today, today)
+        val entries = build(listOf(wholeDay), listOf(undated)).single().entries
+        assertEquals("undated", (entries.first() as AgendaEntry.Task).task.title)
+
+        val fromTomorrow = build(listOf(wholeDay), listOf(undated), from = today.plusDays(1))
+        assertTrue(fromTomorrow.flatMap { it.entries }.none { it is AgendaEntry.Task })
+    }
+
+    @Test
     fun noNowLineWithoutTimedEventsOrOnOtherDays() {
         assertTrue(build(listOf(allDay(1, today, today))).single().entries.none { it is AgendaEntry.NowLine })
         val tomorrow = timed(2, today.plusDays(1).atTime(9, 0), today.plusDays(1).atTime(10, 0))

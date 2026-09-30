@@ -35,6 +35,13 @@
         </activity>
 
         <activity
+            android:name=".ui.AddChooserActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.CalGrid.Transparent" />
+
+        <activity
             android:name=".ui.config.WidgetConfigActivity"
             android:exported="true"
             android:excludeFromRecents="true"

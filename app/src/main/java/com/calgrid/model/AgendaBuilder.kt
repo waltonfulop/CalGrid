@@ -27,10 +27,11 @@ object AgendaBuilder {
     /**
      * Groups events and dated tasks into days starting at [from] for [days] days.
      * Days without entries are skipped, except [from], which is always present.
-     * Each day lists all-day entries first, then tasks, then timed events by start.
+     * Each day lists undated tasks first, then all-day events, dated tasks, and timed events by start.
      * On [today] timed events that already ended are marked [AgendaEntry.Event.past], running ones
      * carry a [AgendaEntry.Event.progress], and a [AgendaEntry.NowLine] follows the events that already started.
-     * Overdue open tasks are listed on [today].
+     * Overdue open tasks, and with [includeUndated] tasks without a due date, are listed on [today]
+     * (when today is in range), so they carry over from day to day.
      */
     fun build(
         events: List<EventInstance>,
@@ -40,6 +41,7 @@ object AgendaBuilder {
         today: LocalDate,
         nowMillis: Long,
         zone: ZoneId,
+        includeUndated: Boolean = true,
     ): List<AgendaDay> {
         val until = from.plusDays(days.toLong())
         val byDay = sortedMapOf<LocalDate, MutableList<AgendaEntry>>()
@@ -73,10 +75,15 @@ object AgendaBuilder {
             }
         }
 
+        val undatedDay = today.takeIf { includeUndated && !it.isBefore(from) && it.isBefore(until) }
         for (task in tasks) {
-            val due = task.due ?: continue
-            val overdue = !task.completed && due.isBefore(today)
-            val day = if (overdue) today else due
+            val due = task.due
+            val overdue = due != null && !task.completed && due.isBefore(today)
+            val day = when {
+                due == null -> undatedDay ?: continue
+                overdue -> today
+                else -> due
+            }
             if (day.isBefore(from) || !day.isBefore(until)) continue
             byDay.getOrPut(day) { mutableListOf() } +=
                 AgendaEntry.Task(task, overdue, task.stableId)
@@ -105,21 +112,18 @@ object AgendaBuilder {
     private val entryOrder = compareBy<AgendaEntry>(
         {
             when (it) {
-                is AgendaEntry.Event -> if (it.span.isAllDayLike) 0 else 2
-                is AgendaEntry.Task -> 1
-                AgendaEntry.NowLine -> 3
+                is AgendaEntry.Task -> if (it.task.due == null) 0 else 2
+                is AgendaEntry.Event -> if (it.span.isAllDayLike) 1 else 3
+                AgendaEntry.NowLine -> 4
             }
         },
+        { (it as? AgendaEntry.Task)?.task?.completed ?: false },
         { (it as? AgendaEntry.Event)?.instance?.begin ?: 0L },
         { (it as? AgendaEntry.Event)?.instance?.title ?: (it as? AgendaEntry.Task)?.task?.title },
     )
 
     private fun stableId(eventId: Long, begin: Long, day: LocalDate): Long =
         ((eventId * 31 + begin) * 31 + day.toEpochDay()) shl 1
-
-    /** Tasks without a due date, open ones first. */
-    fun undated(tasks: List<TaskItem>): List<TaskItem> =
-        tasks.filter { it.due == null }.sortedBy { it.completed }
 }
 
 object MonthGridBuilder {

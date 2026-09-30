@@ -14,6 +14,7 @@ import com.calgrid.container
 import com.calgrid.model.EventInstance
 import com.calgrid.sync.SyncScheduler
 import com.calgrid.sync.WidgetUpdater
+import com.calgrid.ui.AddChooserActivity
 import com.calgrid.ui.MainActivity
 import com.calgrid.ui.config.WidgetConfigActivity
 import java.time.LocalDate
@@ -100,6 +101,12 @@ object WidgetIntents {
         }
         return intent
     }
+
+    fun addChooser(context: Context, date: LocalDate, today: LocalDate): Intent =
+        Intent(context, AddChooserActivity::class.java)
+            .setData(Uri.parse("calgrid://add/$date"))
+            .putExtra(AddChooserActivity.EXTRA_DATE, (if (date == today) null else date)?.toString())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
     fun openTask(context: Context, taskId: String): Intent =
         Intent(context, MainActivity::class.java)

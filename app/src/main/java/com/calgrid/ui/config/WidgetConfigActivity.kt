@@ -239,7 +239,7 @@ private fun ConfigScreen(appWidgetId: Int, onSave: (WidgetConfig) -> Unit) {
                 } else {
                     SwitchRow("Feladatok megjelenítése", current.showTasks) { update { copy(showTasks = it) } }
                     if (current.showTasks) {
-                        SwitchRow("Határidő nélküli feladatok", current.showUndatedTasks) { update { copy(showUndatedTasks = it) } }
+                        SwitchRow("Határidő nélküli feladatok a mai napnál", current.showUndatedTasks) { update { copy(showUndatedTasks = it) } }
                         SwitchRow("Befejezett feladatok", current.showCompletedTasks) { update { copy(showCompletedTasks = it) } }
                         SwitchRow("Minden lista", current.taskListIds == null) { all ->
                             update { copy(taskListIds = if (all) null else taskLists.map { it.id }.toSet()) }
