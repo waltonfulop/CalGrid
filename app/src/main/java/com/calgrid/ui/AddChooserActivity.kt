@@ -1,5 +1,6 @@
 package com.calgrid.ui
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,6 +11,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Modifier
+import com.calgrid.sync.SyncScheduler
 import com.calgrid.ui.theme.CalGridTheme
 import com.calgrid.widget.WidgetIntents
 import java.time.LocalDate
@@ -32,7 +34,9 @@ class AddChooserActivity : ComponentActivity() {
                             TextButton(onClick = { open(WidgetIntents.newEvent(date, today)) }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Naptáresemény")
                             }
-                            TextButton(onClick = { open(WidgetIntents.newTask(this@AddChooserActivity)) }, modifier = Modifier.fillMaxWidth()) {
+                            TextButton(onClick = {
+                                addTask()
+                            }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Feladat")
                             }
                         }
@@ -46,6 +50,17 @@ class AddChooserActivity : ComponentActivity() {
 
     private fun open(target: Intent) {
         startActivity(target)
+        finish()
+    }
+
+    /** Google Tasks when installed, otherwise CalGrid's own editor. */
+    private fun addTask() {
+        try {
+            startActivity(WidgetIntents.googleTasks())
+            SyncScheduler.requestTasksSyncSoon(this)
+        } catch (e: ActivityNotFoundException) {
+            startActivity(WidgetIntents.newTaskInApp(this))
+        }
         finish()
     }
 

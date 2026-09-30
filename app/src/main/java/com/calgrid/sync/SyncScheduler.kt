@@ -25,6 +25,7 @@ object SyncScheduler {
     private const val CALENDAR_OBSERVER = "calendar_observer"
     private const val TASKS_PERIODIC = "tasks_periodic"
     private const val TASKS_NOW = "tasks_now"
+    private const val TASKS_SOON = "tasks_soon"
 
     private const val REQ_MIDNIGHT = 1
     private const val REQ_BOUNDARY = 2
@@ -68,6 +69,24 @@ object SyncScheduler {
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build(),
         )
+    }
+
+    /**
+     * Follow-up syncs after handing off to the Google Tasks app, so a task added there shows up
+     * in the widget within a few minutes instead of at the next periodic run.
+     */
+    fun requestTasksSyncSoon(context: Context) {
+        val manager = WorkManager.getInstance(context)
+        listOf(1L, 3L, 10L).forEach { minutes ->
+            manager.enqueueUniqueWork(
+                "$TASKS_SOON-$minutes",
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<TasksSyncWorker>()
+                    .setConstraints(networkConstraint())
+                    .setInitialDelay(minutes, TimeUnit.MINUTES)
+                    .build(),
+            )
+        }
     }
 
     private fun networkConstraint() =

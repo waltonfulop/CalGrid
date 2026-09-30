@@ -114,7 +114,16 @@ object WidgetIntents {
             .putExtra(MainActivity.EXTRA_TASK_ID, taskId)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
-    fun newTask(context: Context): Intent =
+    /** Launcher entry of the Google Tasks app; start it with [newTaskInApp] as the fallback. */
+    fun googleTasks(): Intent =
+        Intent(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+            .setPackage(GOOGLE_TASKS_PACKAGE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    private const val GOOGLE_TASKS_PACKAGE = "com.google.android.apps.tasks"
+
+    fun newTaskInApp(context: Context): Intent =
         Intent(context, MainActivity::class.java)
             .setData(Uri.parse("calgrid://task/new"))
             .putExtra(MainActivity.EXTRA_NEW_TASK, true)

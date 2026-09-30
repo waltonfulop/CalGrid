@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,8 +44,8 @@ class MainActivity : ComponentActivity() {
 
     private fun routeFor(intent: Intent?): String? = when {
         intent == null -> null
-        intent.getBooleanExtra(EXTRA_NEW_TASK, false) -> Routes.newTask(null)
-        intent.hasExtra(EXTRA_TASK_ID) -> Routes.task(intent.getStringExtra(EXTRA_TASK_ID)!!)
+        intent.getBooleanExtra(EXTRA_NEW_TASK, false) -> Routes.newTask(null, fromWidget = true)
+        intent.hasExtra(EXTRA_TASK_ID) -> Routes.task(intent.getStringExtra(EXTRA_TASK_ID)!!, fromWidget = true)
         else -> null
     }
 
@@ -58,17 +59,26 @@ object Routes {
     const val HOME = "home"
     const val LISTS = "lists"
     const val TASKS = "tasks/{listId}"
-    const val TASK = "task/{taskId}"
-    const val NEW_TASK = "newtask?listId={listId}"
+    const val TASK = "task/{taskId}?fromWidget={fromWidget}"
+    const val NEW_TASK = "newtask?listId={listId}&fromWidget={fromWidget}"
 
     fun tasks(listId: String) = "tasks/$listId"
-    fun task(taskId: String) = "task/$taskId"
-    fun newTask(listId: String?) = if (listId == null) "newtask" else "newtask?listId=$listId"
+    fun task(taskId: String, fromWidget: Boolean = false) = "task/$taskId?fromWidget=$fromWidget"
+    fun newTask(listId: String?, fromWidget: Boolean = false) =
+        "newtask?fromWidget=$fromWidget" + if (listId == null) "" else "&listId=$listId"
 }
 
 @Composable
 private fun AppNavigation(pendingRoute: String?, onRouteConsumed: () -> Unit) {
     val nav = rememberNavController()
+    val activity = LocalContext.current as ComponentActivity
+
+    /** Editors opened from the widget hand back to the home screen instead of the app. */
+    fun closeEditor(fromWidget: Boolean) {
+        nav.popBackStack()
+        if (fromWidget) activity.moveTaskToBack(true)
+    }
+
     LaunchedEffect(pendingRoute) {
         if (pendingRoute != null) {
             nav.navigate(pendingRoute)
@@ -94,21 +104,30 @@ private fun AppNavigation(pendingRoute: String?, onRouteConsumed: () -> Unit) {
                 onNewTask = { nav.navigate(Routes.newTask(listId)) },
             )
         }
-        composable(Routes.TASK, arguments = listOf(navArgument("taskId") { type = NavType.StringType })) { entry ->
+        composable(
+            Routes.TASK,
+            arguments = listOf(
+                navArgument("taskId") { type = NavType.StringType },
+                navArgument("fromWidget") { type = NavType.BoolType; defaultValue = false },
+            ),
+        ) { entry ->
             TaskEditorScreen(
                 taskId = entry.arguments?.getString("taskId"),
                 initialListId = null,
-                onDone = { nav.popBackStack() },
+                onDone = { closeEditor(entry.arguments?.getBoolean("fromWidget") == true) },
             )
         }
         composable(
             Routes.NEW_TASK,
-            arguments = listOf(navArgument("listId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            arguments = listOf(
+                navArgument("listId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("fromWidget") { type = NavType.BoolType; defaultValue = false },
+            ),
         ) { entry ->
             TaskEditorScreen(
                 taskId = null,
                 initialListId = entry.arguments?.getString("listId"),
-                onDone = { nav.popBackStack() },
+                onDone = { closeEditor(entry.arguments?.getBoolean("fromWidget") == true) },
             )
         }
     }
