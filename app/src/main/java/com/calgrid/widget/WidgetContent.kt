@@ -428,8 +428,7 @@ private fun eventSubtitle(context: Context, entry: AgendaEntry.Event, is24Hour: 
         DaySpan.STARTS -> "$start –"
         DaySpan.ENDS -> "– $end"
     }
-    val location = entry.instance.location
-    return if (location.isNullOrBlank()) time else "$time · $location"
+    return eventDetails(time, entry.instance.location)
 }
 
 @Composable
