@@ -387,6 +387,7 @@ private fun EventRow(entry: AgendaEntry.Event, is24Hour: Boolean) {
             Text(
                 text = event.title.ifBlank { "–" },
                 maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
                 style = TextStyle(
                     color = if (entry.past) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
                     fontSize = dims.titleText,
@@ -397,6 +398,7 @@ private fun EventRow(entry: AgendaEntry.Event, is24Hour: Boolean) {
             Text(
                 text = eventSubtitle(context, entry, is24Hour),
                 maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
                     fontSize = dims.subtitleText,
